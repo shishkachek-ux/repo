@@ -1,7 +1,13 @@
--- Noisy Advanced Computer Music Player
--- Works WITHOUT speaker peripheral
+local speaker = peripheral.find("speaker")
 
-local decoder = require("cc.audio.dfpwm").make_decoder()
+if not speaker then
+    print("Speaker not found")
+    print("Place speaker near computer")
+    return
+end
+
+local dfpwm = require("cc.audio.dfpwm")
+local decoder = dfpwm.make_decoder()
 
 local musicFolder = "music"
 
@@ -24,26 +30,18 @@ local function getFiles()
         end
     end
 
-    table.sort(result)
-
     return result
 end
 
-local function play(fileName)
+local function playMusic(path)
     clear()
 
-    print("Now Playing:")
-    print(fileName)
+    print("Playing:")
+    print(path)
     print("")
     print("Press Q to stop")
 
-    local file = fs.open(musicFolder .. "/" .. fileName, "rb")
-
-    if not file then
-        print("Cannot open file")
-        sleep(2)
-        return
-    end
+    local file = fs.open(musicFolder .. "/" .. path, "rb")
 
     while true do
         local chunk = file.read(16 * 1024)
@@ -54,12 +52,11 @@ local function play(fileName)
 
         local buffer = decoder(chunk)
 
-        -- Noisy computers can play audio directly
-        while not os.queueAudio(buffer) do
-            os.pullEvent("audio_empty")
+        while not speaker.playAudio(buffer) do
+            os.pullEvent("speaker_audio_empty")
         end
 
-        local event = {os.pullEvent()}
+        local event = {os.pullEventRaw()}
 
         if event[1] == "key" and event[2] == keys.q then
             break
@@ -68,10 +65,6 @@ local function play(fileName)
 
     file.close()
 
-    os.pullEvent("audio_empty")
-
-    print("")
-    print("Playback finished")
     sleep(1)
 end
 
@@ -84,12 +77,11 @@ while true do
     local files = getFiles()
 
     if #files == 0 then
-        print("No music files found")
+        print("No music found")
         print("")
-        print("Download music with:")
+        print("Use:")
         print("wget URL music/song.dfpwm")
-        print("")
-        print("Press any key")
+
         os.pullEvent("key")
     else
         for i, file in ipairs(files) do
@@ -97,13 +89,13 @@ while true do
         end
 
         print("")
-        print("Select track number:")
+        print("Select music:")
 
         local input = read()
-        local id = tonumber(input)
+        local num = tonumber(input)
 
-        if id and files[id] then
-            play(files[id])
+        if num and files[num] then
+            playMusic(files[num])
         end
     end
 end
