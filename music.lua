@@ -1,13 +1,5 @@
--- CC Tweaked Music Player
--- Загружай .dfpwm файлы через wget и воспроизводи их
-
-local speaker = peripheral.find("speaker")
-
-if not speaker then
-    print("Колонка не найдена!")
-    print("Поставь speaker рядом с компьютером.")
-    return
-end
+-- Noisy Advanced Computer Music Player
+-- Works WITHOUT speaker peripheral
 
 local decoder = require("cc.audio.dfpwm").make_decoder()
 
@@ -32,17 +24,26 @@ local function getFiles()
         end
     end
 
+    table.sort(result)
+
     return result
 end
 
 local function play(fileName)
     clear()
-    print("Сейчас играет:")
+
+    print("Now Playing:")
     print(fileName)
     print("")
-    print("Q - остановить")
+    print("Press Q to stop")
 
     local file = fs.open(musicFolder .. "/" .. fileName, "rb")
+
+    if not file then
+        print("Cannot open file")
+        sleep(2)
+        return
+    end
 
     while true do
         local chunk = file.read(16 * 1024)
@@ -53,25 +54,25 @@ local function play(fileName)
 
         local buffer = decoder(chunk)
 
-        while not speaker.playAudio(buffer) do
-            os.pullEvent("speaker_audio_empty")
+        -- Noisy computers can play audio directly
+        while not os.queueAudio(buffer) do
+            os.pullEvent("audio_empty")
         end
 
-        if os.pullEventRaw then
-            local event, key = os.pullEventRaw()
+        local event = {os.pullEvent()}
 
-            if event == "key" and key == keys.q then
-                file.close()
-                return
-            end
+        if event[1] == "key" and event[2] == keys.q then
+            break
         end
     end
 
     file.close()
 
+    os.pullEvent("audio_empty")
+
     print("")
-    print("Трек закончился.")
-    sleep(2)
+    print("Playback finished")
+    sleep(1)
 end
 
 while true do
@@ -83,12 +84,12 @@ while true do
     local files = getFiles()
 
     if #files == 0 then
-        print("Нет музыки.")
+        print("No music files found")
         print("")
-        print("Загрузи файл так:")
-        print('wget URL music/song.dfpwm')
+        print("Download music with:")
+        print("wget URL music/song.dfpwm")
         print("")
-        print("Нажми любую клавишу.")
+        print("Press any key")
         os.pullEvent("key")
     else
         for i, file in ipairs(files) do
@@ -96,9 +97,9 @@ while true do
         end
 
         print("")
-        print("Выбери номер трека:")
-        local input = read()
+        print("Select track number:")
 
+        local input = read()
         local id = tonumber(input)
 
         if id and files[id] then
