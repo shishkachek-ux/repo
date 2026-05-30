@@ -89,6 +89,8 @@ local function playTrackOrFolder(name)
     for _, filePath in ipairs(files) do
         if stopPlayback then break end
 
+        paused = false -- сбрасываем паузу для нового файла
+
         local h = fs.open(filePath, "rb")
         local fileSize = fs.getSize(filePath)
         local bytesRead = 0
@@ -100,7 +102,7 @@ local function playTrackOrFolder(name)
                     if stopPlayback then break end
 
                     if paused then
-                        sleep(0.1)
+                        sleep(0.05)
                     else
                         local chunk = h.read(16 * 1024)
                         if not chunk then break end
@@ -130,13 +132,6 @@ local function playTrackOrFolder(name)
 
                     if key == keys.p then
                         paused = not paused
-                        term.setCursorPos(1, 12)
-                        term.clearLine()
-                        if paused then
-                            term.write("Status: PAUSED")
-                        else
-                            term.write("Status: PLAYING")
-                        end
                     end
                 end
             end
@@ -145,6 +140,7 @@ local function playTrackOrFolder(name)
 
     return "Playback finished"
 end
+
 
 -- MAIN LOOP
 local function main()
