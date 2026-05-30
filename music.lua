@@ -1,4 +1,4 @@
-```lua
+
 -- ===== CC CHAT =====
 
 local w,h = term.getSize()
@@ -215,4 +215,4 @@ local function uiLoop()
 end
 
 parallel.waitForAny(uiLoop,receiveLoop)
-```
+
