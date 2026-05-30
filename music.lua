@@ -142,9 +142,7 @@ local function playTrack(filename)
 end
 
 
-  h.close()
-  return "Playback finished"
-end
+
 
 local function main()
   local tracks = listTracks()
