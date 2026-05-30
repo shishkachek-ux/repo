@@ -1,28 +1,28 @@
--- ╔══════════════════════════════════════════════════╗
--- ║     CC Tweaked MIDI Player  v1.0                 ║
--- ║     Требует: Advanced Computer + Speakers        ║
--- ╚══════════════════════════════════════════════════╝
+-- ================================================
+-- ||   CC Tweaked MIDI Player  v1.0               ||
+-- ||    Requires: Advanced Computer + Speakers       ||
+-- ================================================
 --
--- Установка:
---   1. Скопируй этот файл как /midi_player.lua на компьютер
---   2. Запусти: lua midi_player.lua
---   3. Или переименуй в startup.lua для автозапуска
+-- Setup:
+--   1. Copy this file as /midi_player.lua to the computer
+--   2. Run: lua midi_player.lua
+--   3. Or rename to startup.lua for autostart
 --
--- Нужны динамики, подключённые к компьютеру (любая сторона).
--- Чем больше динамиков — тем больше нот одновременно.
+-- Requires speakers connected to the computer (any side).
+-- More speakers = more simultaneous notes.
 
--- ─── Конфигурация ────────────────────────────────────────────────────────────
-local SERVER_URL = "ws://103.73.35.177:8765"  -- ИЗМЕНИ НА СВОЙ IP
+-- --- Configuration --------------------
+local SERVER_URL = "ws://192.168.1.100:8765"  -- CHANGE TO YOUR SERVER IP
 local SPEAKER_SIDES = {"left", "right", "top", "bottom", "front", "back"}
--- ─────────────────────────────────────────────────────────────────────────────
+-- ---------------------------------------------------------------------------------
 
--- ─── Состояние ───────────────────────────────────────────────────────────────
+-- --- State --------------------
 local state = {
     screen       = "menu",   -- menu | loading | playing | paused | error
     files        = {},
     selected     = 1,
     song         = nil,      -- {title, duration, count}
-    events       = {},       -- все ноты
+    events       = {},       -- all notes
     ws           = nil,
     playing      = false,
     paused       = false,
@@ -33,10 +33,10 @@ local state = {
     chunks_recv  = 0,
     chunks_total = 0,
     error_msg    = "",
-    scroll       = 0,        -- прокрутка списка
+    scroll       = 0,        -- list scroll
 }
 
--- ─── Динамики ────────────────────────────────────────────────────────────────
+-- --- Speakers --------------------
 local speakers = {}
 
 local function find_speakers()
@@ -46,7 +46,7 @@ local function find_speakers()
             table.insert(speakers, peripheral.wrap(side))
         end
     end
-    -- Также ищем networked speakers
+    -- Also search for networked speakers
     for _, name in ipairs(peripheral.getNames()) do
         if peripheral.getType(name) == "speaker" then
             local already = false
@@ -64,12 +64,12 @@ local function play_note(instrument, note, volume)
     if #speakers == 0 then return end
     local sp = speakers[speaker_idx]
     speaker_idx = (speaker_idx % #speakers) + 1
-    -- pcall на случай переполнения буфера динамика
+    -- pcall in case speaker buffer is full
     local ok, err = pcall(function()
         sp.playNote(instrument, math.floor(volume * state.volume * 3), note)
     end)
     if not ok and err and err:find("Too many notes") then
-        -- Пробуем другой динамик
+        -- Try another speaker
         for i = 1, #speakers do
             local ok2 = pcall(function()
                 speakers[i].playNote(instrument, math.floor(volume * state.volume * 3), note)
@@ -79,7 +79,7 @@ local function play_note(instrument, note, volume)
     end
 end
 
--- ─── Отрисовка ───────────────────────────────────────────────────────────────
+-- --- Rendering --------------------
 local W, H = term.getSize()
 
 local function cls()
@@ -135,22 +135,22 @@ local function progress_bar(x, y, width, val, max_val, fg, bg)
     term.write(string.rep("\127", width - filled))
 end
 
--- ─── Экраны ──────────────────────────────────────────────────────────────────
+-- --- Screens --------------------
 
 local function draw_menu()
     cls()
     draw_header()
     
     if #state.files == 0 then
-        center(math.floor(H / 2), "Нет файлов на сервере", colors.gray)
-        center(math.floor(H / 2) + 1, "Положите .mid в папку midi/", colors.lightGray)
-        draw_footer("[R] Обновить  [Q] Выход")
+        center(math.floor(H / 2), "No files on server", colors.gray)
+        center(math.floor(H / 2) + 1, "Put .mid files into the midi/ folder", colors.lightGray)
+        draw_footer("[R] Refresh  [Q] Quit")
         return
     end
     
-    write_at(2, 2, "Выберите трек:", colors.lightGray)
+    write_at(2, 2, "Select track:", colors.lightGray)
     
-    local list_h = H - 4  -- строки для списка
+    local list_h = H - 4  -- list rows
     local max_scroll = math.max(0, #state.files - list_h)
     state.scroll = math.min(math.max(state.scroll, state.selected - list_h), state.selected - 1)
     state.scroll = math.max(0, math.min(state.scroll, max_scroll))
@@ -163,20 +163,20 @@ local function draw_menu()
         
         if idx == state.selected then
             fill_line(y, " ", colors.black, colors.cyan)
-            write_at(2, y, "► " .. f.name, colors.black, colors.cyan)
+            write_at(2, y, ">> " .. f.name, colors.black, colors.cyan)
         else
             fill_line(y, " ", colors.white, colors.black)
             write_at(2, y, "  " .. f.name, colors.white, colors.black)
         end
     end
     
-    -- Скроллбар
+    -- Scrollbar
     if #state.files > list_h then
         local bar_y = 3 + math.floor(state.scroll / max_scroll * (list_h - 1))
         write_at(W, bar_y, "\x16", colors.gray, colors.black)
     end
     
-    draw_footer("[Up/Down] Выбор  [Enter] Играть  [R] Обновить  [Q] Выход")
+    draw_footer("[Up/Down] Select  [Enter] Play  [R] Refresh  [Q] Quit")
 end
 
 local function draw_loading()
@@ -184,19 +184,19 @@ local function draw_loading()
     draw_header()
     
     local title = state.song and state.song.title or "..."
-    center(4, "Загрузка:", colors.lightGray)
+    center(4, "Loading:", colors.lightGray)
     center(5, title, colors.white)
     
     if state.chunks_total > 0 then
         local pct = math.floor(state.chunks_recv / state.chunks_total * 100)
-        center(7, "Получено нот: " .. (state.chunks_recv * 200) .. " / загружается...", colors.gray)
+        center(7, "Notes received: " .. (state.chunks_recv * 200) .. " / loading...", colors.gray)
         progress_bar(4, 9, W - 6, state.chunks_recv, state.chunks_total, colors.lime, colors.gray)
         center(11, pct .. "%", colors.lime)
     else
-        center(7, "Ожидание данных...", colors.gray)
+        center(7, "Waiting for data...", colors.gray)
     end
     
-    draw_footer("[Q] Отмена")
+    draw_footer("[Q] Cancel")
 end
 
 local function draw_player()
@@ -206,10 +206,10 @@ local function draw_player()
     local song = state.song
     if not song then return end
     
-    -- Название
+    -- Title
     center(3, song.title, colors.white)
     
-    -- Время
+    -- Time
     local elapsed = 0
     if state.playing and not state.paused then
         elapsed = os.clock() - state.start_time + state.pause_offset
@@ -221,39 +221,39 @@ local function draw_player()
     local time_str = format_time(elapsed) .. " / " .. format_time(song.duration)
     center(5, time_str, colors.lightGray)
     
-    -- Прогресс-бар
+    -- Progress bar
     progress_bar(4, 7, W - 6, elapsed, song.duration, colors.cyan, colors.gray)
     
-    -- Статус
-    local status_icon = state.paused and "|| ПАУЗА" or (state.playing and "> ИГРАЕТ" or "  СТОП")
+    -- Status
+    local status_icon = state.paused and "|| PAUSE" or (state.playing and ">> PLAYING" or "  STOP")
     center(9, status_icon, state.paused and colors.yellow or colors.lime)
     
-    -- Ноты сыграно
+    -- Notes played
     local played = math.max(0, state.event_idx - 1)
-    center(10, "Нот: " .. played .. " / " .. song.count, colors.gray)
+    center(10, "Notes: " .. played .. " / " .. song.count, colors.gray)
     
-    -- Громкость
+    -- Volume
     local vol_bar = math.floor(state.volume * 10)
-    local vol_str = "Громкость: [" .. string.rep("|", vol_bar) .. string.rep(".", 10 - vol_bar) .. "]"
+    local vol_str = "Volume: [" .. string.rep("|", vol_bar) .. string.rep(".", 10 - vol_bar) .. "]"
     center(12, vol_str, colors.lightGray)
     
-    -- Динамики
-    center(13, "Динамиков: " .. #speakers, colors.gray)
+    -- Speakers
+    center(13, "Speakers: " .. #speakers, colors.gray)
     
-    -- Подсказки
+    -- Hints
     if state.paused then
-        draw_footer("[Space] Продолжить  [S] Стоп  [-/+] Громкость  [Q] Выход")
+        draw_footer("[Space] Resume  [S] Stop  [-/+] Volume  [Q] Quit")
     else
-        draw_footer("[Space] Пауза  [S] Стоп  [-/+] Громкость  [Q] Выход")
+        draw_footer("[Space] Pause  [S] Stop  [-/+] Volume  [Q] Quit")
     end
 end
 
 local function draw_error()
     cls()
     draw_header()
-    center(5, "Ошибка!", colors.red)
+    center(5, "Error!", colors.red)
     center(7, state.error_msg, colors.white)
-    draw_footer("[Any] Назад")
+    draw_footer("[Any] Back")
 end
 
 local function redraw()
@@ -266,7 +266,7 @@ local function redraw()
     term.setCursorPos(1, 1)
 end
 
--- ─── Сеть ────────────────────────────────────────────────────────────────────
+-- --- Network --------------------
 
 local function ws_send(data)
     if state.ws then
@@ -277,7 +277,7 @@ end
 local function connect()
     local ws, err = http.websocket(SERVER_URL)
     if not ws then
-        return nil, err or "не удалось подключиться"
+        return nil, err or "connection failed"
     end
     return ws
 end
@@ -295,7 +295,7 @@ local function request_song(id)
     ws_send({cmd = "load", id = id})
 end
 
--- ─── Плеер ───────────────────────────────────────────────────────────────────
+-- --- Player --------------------
 
 local function stop_playing()
     state.playing = false
@@ -317,21 +317,21 @@ end
 local function pause_resume()
     if not state.playing then return end
     if state.paused then
-        -- Возобновляем
+        -- Resume
         state.start_time = os.clock() - state.pause_offset
         state.paused = false
     else
-        -- Ставим на паузу
+        -- Pause
         state.pause_offset = os.clock() - state.start_time
         state.paused = true
     end
 end
 
--- Вызывается в главном цикле каждый тик для воспроизведения нот
+-- Called every tick in main loop to play notes
 local function tick_player()
     if not state.playing or state.paused then return end
     if state.event_idx > #state.events then
-        -- Песня закончилась
+        -- Song finished
         state.playing = false
         state.screen  = "menu"
         redraw()
@@ -340,7 +340,7 @@ local function tick_player()
     
     local now = os.clock() - state.start_time + state.pause_offset
     
-    -- Играем все ноты, которые пора было сыграть
+    -- Play all notes that are due
     while state.event_idx <= #state.events do
         local ev = state.events[state.event_idx]
         if ev.t > now then break end
@@ -349,7 +349,7 @@ local function tick_player()
     end
 end
 
--- ─── Главный цикл ────────────────────────────────────────────────────────────
+-- --- Main loop --------------------
 
 local function handle_ws_message(raw)
     local ok, msg = pcall(textutils.unserialiseJSON, raw)
@@ -365,7 +365,7 @@ local function handle_ws_message(raw)
     
     elseif cmd == "song_info" then
         state.song = {
-            title    = msg.title or "Неизвестно",
+            title    = msg.title or "Unknown",
             duration = msg.duration or 0,
             count    = msg.count or 0,
         }
@@ -385,7 +385,7 @@ local function handle_ws_message(raw)
         redraw()
     
     elseif cmd == "pong" then
-        -- keep-alive ответ
+        -- keep-alive response
     
     elseif msg.error then
         state.error_msg = msg.error
@@ -450,65 +450,65 @@ local function handle_key(key)
 end
 
 local function main()
-    -- Проверяем HTTP
+    -- Check HTTP
     if not http then
         term.setTextColor(colors.red)
-        print("Ошибка: HTTP/WebSocket не включён!")
-        print("Добавьте в конфиг: http_enable = true")
+        print("Error: HTTP/WebSocket is disabled!")
+        print("Add to config: http_enable = true")
         return
     end
     
-    -- Ищем динамики
+    -- Find speakers
     find_speakers()
     
-    -- Подключаемся
+    -- Connect
     cls()
-    center(5, "Подключение к серверу...", colors.lightGray)
+    center(5, "Connecting to server...", colors.lightGray)
     center(6, SERVER_URL, colors.gray)
     
     local ws, err = connect()
     if not ws then
         cls()
         term.setTextColor(colors.red)
-        center(5, "Ошибка подключения:", colors.red)
+        center(5, "Connection error:", colors.red)
         center(6, tostring(err), colors.white)
-        center(8, "Проверь SERVER_URL в начале файла", colors.gray)
+        center(8, "Check SERVER_URL at the top of the file", colors.gray)
         return
     end
     state.ws = ws
     
-    -- Запрашиваем список
+    -- Request file list
     request_list()
     
-    -- Таймер для keep-alive и обновления плеера
+    -- Timer for keep-alive and player updates
     local last_ping   = os.clock()
     local last_draw   = os.clock()
     local PING_INTERVAL = 10
     local DRAW_INTERVAL = 0.1
     
     while true do
-        -- Проверяем входящие WS сообщения (неблокирующий режим)
-        local raw = ws.receive(0)  -- 0 = не ждать
+        -- Check incoming WS messages (non-blocking)
+        local raw = ws.receive(0)  -- 0 = no wait
         if raw then
             handle_ws_message(raw)
         end
         
-        -- Тикаем плеер (воспроизводим ноты)
+        -- Tick player (play notes)
         tick_player()
         
-        -- Обновляем экран плеера не чаще чем раз в 0.1 сек
+        -- Redraw player screen max once per 0.1s
         if state.screen == "playing" and (os.clock() - last_draw) >= DRAW_INTERVAL then
             draw_player()
             last_draw = os.clock()
         end
         
-        -- Keep-alive пинг
+        -- Keep-alive ping
         if (os.clock() - last_ping) >= PING_INTERVAL then
             ws_send({cmd = "ping"})
             last_ping = os.clock()
         end
         
-        -- Обрабатываем клавиши (неблокирующий)
+        -- Handle keys (non-blocking)
         local ev, p1 = os.pullEventRaw("key")
         if ev == "terminate" then break end
         if ev == "key" then
@@ -516,22 +516,22 @@ local function main()
             if result == "quit" then break end
         end
         
-        -- Небольшой sleep чтобы не жрать CPU
+        -- Small sleep to avoid CPU spam
         os.sleep(0.05)
     end
     
     ws.close()
     cls()
     term.setTextColor(colors.white)
-    print("До свидания!")
+    print("Goodbye!")
 end
 
--- Запуск
+-- Entry point
 local ok, err = pcall(main)
 if not ok then
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.red)
-    print("\nНепредвиденная ошибка:")
+    print("\nUnexpected error:")
     term.setTextColor(colors.white)
     print(tostring(err))
 end
