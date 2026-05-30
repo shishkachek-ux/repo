@@ -180,39 +180,77 @@ local function receiveLoop()
     end
 end
 
+
+local friendKeys = {}
+
+local function rebuildFriendKeys()
+    friendKeys = {}
+
+    for id,name in pairs(friends) do
+        table.insert(friendKeys,{
+            id=tonumber(id),
+            name=name
+        })
+    end
+
+    table.sort(friendKeys,function(a,b)
+        return a.name < b.name
+    end)
+
+    if not selected and #friendKeys > 0 then
+        selected = friendKeys[1].id
+    end
+end
+
+rebuildFriendKeys()
+
+local function nextFriend()
+    if #friendKeys == 0 then return end
+
+    local index = 1
+
+    for i,v in ipairs(friendKeys) do
+        if v.id == selected then
+            index = i
+        end
+    end
+
+    index = index + 1
+
+    if index > #friendKeys then
+        index = 1
+    end
+
+    selected = friendKeys[index].id
+end
+
 local function uiLoop()
 
     while true do
         draw()
 
-        local e,b,x,y = os.pullEvent()
+        term.setCursorPos(2,h)
+        term.setTextColor(colors.lightGray)
+        write("[G] Change Chat")
 
-        if e == "mouse_click" then
+        local e,b = os.pullEvent()
 
-            if x <= 18 then
+        if e == "key" then
 
-                local cy = 3
-                for id,name in pairs(friends) do
-                    if y == cy then
-                        selected = tonumber(id)
-                    end
-                    cy = cy + 1
-                end
-            end
+            if b == keys.g then
+                nextFriend()
 
-            if y == h then
+            elseif b == keys.f then
+                addFriend()
+                rebuildFriendKeys()
+
+            elseif b == keys.enter then
                 sendMessage()
             end
-
-        elseif e == "key" then
-
-            if b == keys.f then
-                addFriend()
-            end
-
         end
     end
 end
+
 
 parallel.waitForAny(uiLoop,receiveLoop)
 
