@@ -1,13 +1,54 @@
+local musicDir = "music"
+
+-- find speaker
+local speaker = peripheral.find("speaker")
+if not speaker then
+    print("No speaker found!")
+    return
+end
+
+-- list tracks and folders
+local function listTracks()
+    if not fs.exists(musicDir) then
+        print("Music folder not found!")
+        return {}
+    end
+
+    local items = fs.list(musicDir)
+    table.sort(items)
+    return items
+end
+
+-- draw UI
+local function drawUI(tracks, index, status)
+    term.clear()
+    term.setCursorPos(1,1)
+    print("=== MUSIC PLAYER ===")
+    print("Folder: music")
+    print("Controls: Up/Down - select | Enter - play")
+    print("S - stop | P - pause | Q - quit")
+    print("Status: " .. status)
+    print("")
+
+    for i, name in ipairs(tracks) do
+        if i == index then
+            term.setTextColor(colors.yellow)
+            print("> " .. name)
+            term.setTextColor(colors.white)
+        else
+            print("  " .. name)
+        end
+    end
+end
+
+-- play file or folder
 local function playTrackOrFolder(name)
     local path = fs.combine(musicDir, name)
-
-    -- check if folder
     local isDir = fs.isDir(path)
 
     local files = {}
 
     if isDir then
-        -- list all files inside folder
         for _, f in ipairs(fs.list(path)) do
             local full = fs.combine(path, f)
             if not fs.isDir(full) then
@@ -104,3 +145,45 @@ local function playTrackOrFolder(name)
 
     return "Playback finished"
 end
+
+-- MAIN LOOP
+local function main()
+    local tracks = listTracks()
+    if #tracks == 0 then
+        print("No tracks found!")
+        return
+    end
+
+    local index = 1
+    local status = "Ready"
+
+    drawUI(tracks, index, status)
+
+    while true do
+        local event, key = os.pullEvent("key")
+
+        if key == keys.up then
+            if index > 1 then index = index - 1 end
+            drawUI(tracks, index, status)
+
+        elseif key == keys.down then
+            if index < #tracks then index = index + 1 end
+            drawUI(tracks, index, status)
+
+        elseif key == keys.enter then
+            status = "Playing: " .. tracks[index]
+            drawUI(tracks, index, status)
+            local msg = playTrackOrFolder(tracks[index])
+            status = msg
+            drawUI(tracks, index, status)
+
+        elseif key == keys.q then
+            term.clear()
+            term.setCursorPos(1,1)
+            print("Goodbye!")
+            break
+        end
+    end
+end
+
+main()
