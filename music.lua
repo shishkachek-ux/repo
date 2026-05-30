@@ -76,7 +76,7 @@ local function playTrack(filename)
 
         term.setCursorPos(1, 10)
         term.clearLine()
-        term.write("Progress: [")
+        term.write("[")
 
         for i = 1, width do
             if i <= filled then
