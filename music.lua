@@ -64,7 +64,6 @@ local function playTrackOrFolder(name)
     local decoder = dfpwm.make_decoder()
 
     local stopPlayback = false
-    local paused = false
 
     local function drawProgress(bytesRead, fileSize)
         local width = 30
@@ -89,8 +88,6 @@ local function playTrackOrFolder(name)
     for _, filePath in ipairs(files) do
         if stopPlayback then break end
 
-        paused = false -- сбрасываем паузу для нового файла
-
         local h = fs.open(filePath, "rb")
         local fileSize = fs.getSize(filePath)
         local bytesRead = 0
@@ -101,19 +98,15 @@ local function playTrackOrFolder(name)
                 while true do
                     if stopPlayback then break end
 
-                    if paused then
-                        sleep(0.05)
-                    else
-                        local chunk = h.read(16 * 1024)
-                        if not chunk then break end
+                    local chunk = h.read(16 * 1024)
+                    if not chunk then break end
 
-                        bytesRead = bytesRead + #chunk
-                        drawProgress(bytesRead, fileSize)
+                    bytesRead = bytesRead + #chunk
+                    drawProgress(bytesRead, fileSize)
 
-                        local decoded = decoder(chunk)
-                        while not speaker.playAudio(decoded) do
-                            os.pullEvent("speaker_audio_empty")
-                        end
+                    local decoded = decoder(chunk)
+                    while not speaker.playAudio(decoded) do
+                        os.pullEvent("speaker_audio_empty")
                     end
                 end
                 h.close()
@@ -128,10 +121,6 @@ local function playTrackOrFolder(name)
                         stopPlayback = true
                         speaker.stop()
                         break
-                    end
-
-                    if key == keys.p then
-                        paused = not paused
                     end
                 end
             end
