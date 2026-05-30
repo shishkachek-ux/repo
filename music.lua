@@ -12,7 +12,7 @@
 -- More speakers = more simultaneous notes.
 
 -- --- Configuration --------------------
-local SERVER_URL = "ws://192.168.1.100:8765"  -- CHANGE TO YOUR SERVER IP
+local SERVER_URL = "ws://10.63.78.131:8765"  -- CHANGE TO YOUR SERVER IP
 local SPEAKER_SIDES = {"left", "right", "top", "bottom", "front", "back"}
 -- ---------------------------------------------------------------------------------
 
